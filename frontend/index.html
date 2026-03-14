@@ -8,6 +8,7 @@
         h2 { color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
         .price-info { background: #dbeafe; color: #1e40af; padding: 8px 15px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; margin-bottom: 20px; display: inline-block; }
 
+        /* FIX 2: Two distinct result panels */
         .result-section { margin-top: 20px; }
         .result-label { font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
         .label-slither { color: #7c3aed; }
@@ -33,14 +34,6 @@
         #downloadBtn:hover { background: #059669; }
         select { padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 14px; color: #1e293b; background: white; cursor: pointer; }
         select:focus { outline: none; border-color: #0052ff; }
-
-        /* ── BADGE SECTION (new) ── */
-        #badgeSection { display: none; margin-top: 25px; padding: 20px; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; }
-        #badgeSection h3 { color: #92400e; margin-top: 0; }
-        #mintBadgeBtn { background: #f59e0b; margin-top: 10px; }
-        #mintBadgeBtn:hover { background: #d97706; }
-        #walletInput { width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 14px; margin-top: 8px; box-sizing: border-box; }
-        #badgeStatus { color: #92400e; font-weight: bold; margin-top: 8px; }
     </style>
 </head>
 <body>
@@ -83,6 +76,7 @@
 
     <div id="links" class="links"></div>
 
+    <!-- FIX 2: Separate panels for Slither and AI results -->
     <div class="result-section" id="slitherSection" style="display:none;">
         <div class="result-label label-slither">🔍 Slither Static Analysis</div>
         <pre id="slitherResult"></pre>
@@ -112,6 +106,15 @@
         ).join("\n\n");
     }
 
+    function formatVulnerabilities(vulns) {
+        if (!vulns || vulns.length === 0) return "✅ No vulnerabilities detected by Slither.";
+        return vulns.map((v, i) =>
+            `#${i + 1} ${v.vulnerability || "Unknown"}\n` +
+            `  Impact: ${v.impact || "N/A"} | Confidence: ${v.confidence || "N/A"}\n` +
+            `  Details: ${v.description || "No details provided."}`
+        ).join("\n\n");
+    }
+
     async function runAudit() {
         const fileInput = document.getElementById("contractFile");
         const networkSelect = document.getElementById("network");
@@ -125,8 +128,6 @@
 
         linksBox.innerHTML = "";
         downloadSection.style.display = "none";
-        document.getElementById("badgeSection").style.display = "none"; // ← new
-        document.getElementById("badgeStatus").textContent = ""; // ← new
         document.getElementById("slitherSection").style.display = "none";
         document.getElementById("aiSection").style.display = "none";
         document.getElementById("slitherResult").textContent = "";
@@ -192,18 +193,21 @@
                 addLink(linksBox, data.blockchain.explorerUrl, explorerLabel);
             }
 
+            // FIX 2: Show Slither results if present
             const slitherText = data.report?.slitherAnalysis || formatVulnerabilities(data.report?.vulnerabilities);
             if (slitherText) {
                 document.getElementById("slitherSection").style.display = "block";
                 document.getElementById("slitherResult").textContent = slitherText;
             }
 
+            // Show AI results
             const aiText = data.report?.aiAnalysis;
             if (aiText) {
                 document.getElementById("aiSection").style.display = "block";
                 document.getElementById("aiResult").textContent = aiText;
             }
 
+            // Fallback: show raw JSON if neither field exists
             if (!slitherText && !aiText) {
                 document.getElementById("aiSection").style.display = "block";
                 document.getElementById("aiResult").textContent = JSON.stringify(data, null, 2);
@@ -213,87 +217,6 @@
             statusBox.textContent = "";
             document.getElementById("aiSection").style.display = "block";
             document.getElementById("aiResult").textContent = "Error: " + err.message;
-        } finally {
-            btn.disabled = false;
-        }
-    }
-
-    // ── BADGE FUNCTIONS (new) ──
-    function checkBadgeEligibility(data) {
-        const report = data.report;
-        const score = report.securityScore;
-
-        const hasHighOrCritical = report.vulnerabilities.some(v =>
-            v.impact === "High" || v.impact === "Critical"
-        );
-
-        if (score >= 80 && !hasHighOrCritical) {
-            document.getElementById("badgeSection").style.display = "block";
-            document.getElementById("badgeScore").textContent = score;
-            lastAuditMeta = {
-                contractName: data.report.contract.split("/").pop(),
-                securityScore: score,
-                ipfsCid: data.ipfs?.cid
-            };
-        }
-    }
-
-    async function mintBadge() {
-        const btn = document.getElementById("mintBadgeBtn");
-        const badgeStatus = document.getElementById("badgeStatus");
-        const walletInput = document.getElementById("walletInput").value.trim();
-        const linksBox = document.getElementById("links");
-
-        if (!walletInput || !walletInput.startsWith("0x")) {
-            return alert("Please enter a valid wallet address starting with 0x");
-        }
-
-        try {
-            btn.disabled = true;
-            badgeStatus.textContent = "Processing payment on Avalanche Fuji...";
-
-            const payRes = await fetch(PAY_URL, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ network: "avalanche-fuji" })
-            });
-
-            if (!payRes.ok) throw new Error("Payment failed");
-
-            const paymentResult = await payRes.json();
-            if (!paymentResult.success) throw new Error("Payment unsuccessful");
-
-            badgeStatus.textContent = "Payment confirmed! Minting Soulbound Badge...";
-
-            const paymentProof = btoa(JSON.stringify(paymentResult));
-
-            const mintRes = await fetch(MINT_URL, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "x-payment": paymentProof
-                },
-                body: JSON.stringify({
-                    recipientAddress: walletInput,
-                    contractName: lastAuditMeta.contractName,
-                    securityScore: lastAuditMeta.securityScore,
-                    ipfsCid: lastAuditMeta.ipfsCid
-                })
-            });
-
-            if (!mintRes.ok) {
-                const err = await mintRes.json();
-                throw new Error(err.error);
-            }
-
-            const mintData = await mintRes.json();
-
-            badgeStatus.textContent = `✅ Badge minted! Token ID: #${mintData.badge.tokenId}`;
-
-            addLink(linksBox, mintData.badge.explorerUrl, "🏅 View Badge Tx on Snowtrace");
-
-        } catch (err) {
-            badgeStatus.textContent = "Error: " + err.message;
         } finally {
             btn.disabled = false;
         }
@@ -321,6 +244,7 @@
         const cleanFileName = fileName.replace(".sol", "");
         const network = lastReportData.network || document.getElementById("network").value;
 
+        // --- 1. HEADER ---
         doc.setFillColor(15, 23, 42);
         doc.rect(0, 0, pageWidth, 45, 'F');
         doc.setFont("helvetica", "bold");
@@ -332,6 +256,7 @@
         doc.setTextColor(148, 163, 184);
         doc.text("AI-POWERED SMART CONTRACT ANALYSIS", margin, 32);
 
+        // --- 2. METADATA ---
         y = 55;
         doc.setFontSize(9);
         doc.setTextColor(71, 85, 105);
@@ -365,6 +290,7 @@
             doc.text(lastReportData.blockchain.txHash.substring(0, 30) + "...", margin + 25, y + 10);
         }
 
+        // --- 3. SCORE & RISK ---
         y += 20;
         const score = report.securityScore || 0;
         let themeColor = [22, 163, 74];
@@ -376,7 +302,7 @@
         doc.setDrawColor(226, 232, 240);
         doc.roundedRect(margin, y, pageWidth - (margin * 2), 35, 3, 3, 'FD');
         doc.setFontSize(12);
-        doc.setTextColor(100, 100, 100);
+        doc.setTextColor(100, 100, 100); // ← explicit grey, not from themeColor
         doc.text("SECURITY SCORE", margin + 10, y + 12);
         doc.setFontSize(32);
         doc.setTextColor(themeColor[0], themeColor[1], themeColor[2]);
@@ -393,7 +319,7 @@
         y += 50;
         doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
-        doc.setTextColor(15, 23, 42);
+        doc.setTextColor(15, 23, 42); // ← reset to dark before each section
         doc.text("EXECUTIVE SUMMARY", margin, y);
         doc.setDrawColor(themeColor[0], themeColor[1], themeColor[2]);
         doc.setLineWidth(1);
@@ -401,37 +327,46 @@
         y += 12;
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
-        doc.setTextColor(51, 65, 85);
+        doc.setTextColor(51, 65, 85); // ← explicit dark slate
         const summaryText = `This automated audit uses advanced AI patterns to detect vulnerabilities including Reentrancy, Integer Overflows, and Access Control flaws. Deployed on ${network}.`;
         const splitSummary = doc.splitTextToSize(summaryText, pageWidth - (margin * 2));
         doc.text(splitSummary, margin, y);
 
+        // --- 5. ANALYSIS SECTIONS (FIX 1: color reset on every page) ---
         y += splitSummary.length * 6 + 10;
 
+        // Helper: render a labeled analysis block with proper color resets
         function renderPDFSection(sectionTitle, accentR, accentG, accentB, text) {
             if (!text) return;
+
             if (y > pageHeight - 40) {
                 addFooter(doc, pageWidth, pageHeight, fileName);
                 doc.addPage();
                 y = 25;
             }
+
+            // Section heading
             doc.setFont("helvetica", "bold");
             doc.setFontSize(14);
-            doc.setTextColor(15, 23, 42);
+            doc.setTextColor(15, 23, 42); // ← dark heading, always reset
             doc.text(sectionTitle, margin, y);
             doc.setDrawColor(accentR, accentG, accentB);
             doc.setLineWidth(1);
             doc.line(margin, y + 2, margin + 20, y + 2);
             y += 12;
+
+            // Body text — FIX 1: always set dark color before writing body
             doc.setFont("helvetica", "normal");
             doc.setFontSize(10);
-            doc.setTextColor(30, 30, 30);
+            doc.setTextColor(30, 30, 30); // ← THE FIX: explicit dark reset after colored heading
+
             const lines = doc.splitTextToSize(text, pageWidth - (margin * 2));
             lines.forEach(line => {
                 if (y > pageHeight - 25) {
                     addFooter(doc, pageWidth, pageHeight, fileName);
                     doc.addPage();
                     y = 25;
+                    // FIX 1: re-apply dark color after adding a new page
                     doc.setFont("helvetica", "normal");
                     doc.setFontSize(10);
                     doc.setTextColor(30, 30, 30);
@@ -442,11 +377,16 @@
             y += 10;
         }
 
+        // Slither section (purple accent)
         const slitherText = report.slitherAnalysis || formatVulnerabilities(report.vulnerabilities);
         renderPDFSection("SLITHER STATIC ANALYSIS", 124, 58, 237, slitherText);
+
+        // AI analysis section (blue accent)
         renderPDFSection("AI ANALYSIS", 0, 82, 255, report.aiAnalysis || "No AI analysis data found.");
 
+        // Final footer
         addFooter(doc, pageWidth, pageHeight, fileName);
+
         doc.save(`${cleanFileName}_Security_Audit_${network}.pdf`);
     }
 
