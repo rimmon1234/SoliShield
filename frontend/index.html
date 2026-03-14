@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Smart Contract Auditor</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; line-height: 1.6; background: #f8fafc; color: #1e293b; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        h2 { color: #0f172a; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; }
+        .price-info { background: #dbeafe; color: #1e40af; padding: 8px 15px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; margin-bottom: 20px; display: inline-block; }
+        #result { background: #1e293b; color: #f8fafc; padding: 20px; border-radius: 8px; white-space: pre-wrap; font-family: 'Courier New', Courier, monospace; font-size: 14px; margin-top: 20px; max-height: 500px; overflow-y: auto; }
+        .status { color: #2563eb; font-weight: bold; margin-top: 10px; }
+
+        button { background: #0052ff; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        button:hover { background: #003db3; }
+        button:disabled { background: #94a3b8; cursor: not-allowed; }
+
+        .links { margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
+        .links a { padding: 10px 18px; background: #f1f5f9; color: #334155; border-radius: 6px; text-decoration: none; font-size: 14px; border: 1px solid #e2e8f0; transition: 0.2s; font-weight: bold; }
+        .links a:hover { background: #e2e8f0; }
+
+        #downloadSection { display: none; margin-top: 25px; padding: 20px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; text-align: center; }
+        #downloadSection h3 { color: #166534; margin-top: 0; }
+        #downloadBtn { background: #10b981; }
+        #downloadBtn:hover { background: #059669; }
+
+        select { padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 14px; color: #1e293b; background: white; cursor: pointer; }
+        select:focus { outline: none; border-color: #0052ff; }
+
+        .network-badge { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+        .badge-base { background: #dbeafe; color: #1d4ed8; }
+        .badge-fuji { background: #fee2e2; color: #dc2626; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>AI Smart Contract Security Audit</h2>
+    <div class="price-info">Sponsored Mode: 0.50 USDC + 0.01/Line</div>
+    
+    <br>
+    <input type="file" id="contractFile" accept=".sol" />
+    <br><br>
+
+    <label for="network" style="font-weight: 600; margin-right: 8px;">Select Network:</label>
+    <select id="network">
+        <option value="base-sepolia">Base Sepolia</option>
+        <option value="avalanche-fuji">Avalanche Fuji</option>
+    </select>
+    <br><br>
+
+    <button id="auditBtn">Pay & Run Audit</button>
+
+    <p id="status" class="status"></p>
+
+    <div id="downloadSection">
+        <h3>✅ Audit Ready</h3>
+        <button id="downloadBtn" style="background: #10b981;">Download PDF Report</button>
+    </div>
+
+    <div id="links" class="links"></div>
+    <pre id="result"></pre>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script>
+    const AUDIT_URL = "http://localhost:3000/audit";
+    const PAY_URL = "http://localhost:3000/pay";
+
+    let lastReportData = null;
+
+    async function runAudit() {
+        const fileInput = document.getElementById("contractFile");
+        const networkSelect = document.getElementById("network");
+        const statusBox = document.getElementById("status");
+        const resultBox = document.getElementById("result");
+        const linksBox = document.getElementById("links");
+        const downloadSection = document.getElementById("downloadSection");
+        const btn = document.getElementById("auditBtn");
+
+        const selectedNetwork = networkSelect.value;
+
+        if (!fileInput.files.length) return alert("Please select a .sol file");
+
+        linksBox.innerHTML = "";
+        resultBox.textContent = "";
+        downloadSection.style.display = "none";
+
+        try {
+            btn.disabled = true;
+            statusBox.textContent = "Calculating price...";
+
+            const checkForm = new FormData();
+            checkForm.append("contract", fileInput.files[0]);
+
+            let res = await fetch(AUDIT_URL, {
+                method: "POST",
+                headers: { "x-network": selectedNetwork },
+                body: checkForm
+            });
+
+            if (res.status === 402) {
+                const quote = await res.json();
+                statusBox.textContent = `Sponsoring ${quote.amount} USDC on ${selectedNetwork}...`;
+
+                const payRes = await fetch(PAY_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ 
+                        amount: quote.amount,
+                        network: selectedNetwork 
+                    })
+                });
+
+                if (!payRes.ok) {
+                    const error = await payRes.json();
+                    throw new Error(error.error || "Payment failed");
+                }
+
+                const paymentResult = await payRes.json();
+                const paymentProof = btoa(JSON.stringify(paymentResult));
+
+                statusBox.textContent = "Payment confirmed! Running AI audit...";
+
+                const auditForm = new FormData();
+                auditForm.append("contract", fileInput.files[0]);
+
+                res = await fetch(AUDIT_URL, {
+                    method: "POST",
+                    headers: {
+                        "x-payment": paymentProof,
+                        "x-network": selectedNetwork
+                    },
+                    body: auditForm
+                });
+            }
+
+            if (!res.ok) throw new Error("Audit request failed.");
+
+            const data = await res.json();
+            lastReportData = data;
+
+            statusBox.textContent = `✅ Audit Complete! Stored on IPFS and ${selectedNetwork}.`;
+            downloadSection.style.display = "block";
+
+            if (data.ipfs?.url) addLink(linksBox, data.ipfs.url, "View on IPFS");
+
+            if (data.blockchain?.explorerUrl) {
+                const explorerLabel = selectedNetwork === "avalanche-fuji"
+                    ? "View on Snowtrace"
+                    : "View on Basescan";
+                addLink(linksBox, data.blockchain.explorerUrl, explorerLabel);
+            }
+
+            resultBox.textContent = data.report?.aiAnalysis || JSON.stringify(data, null, 2);
+
+        } catch (err) {
+            statusBox.textContent = "";
+            resultBox.textContent = "Error: " + err.message;
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    
