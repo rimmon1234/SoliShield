@@ -106,7 +106,7 @@
     function formatVulnerabilities(vulns) {
         if (!vulns || vulns.length === 0) return "✅ No vulnerabilities detected by Slither.";
         return vulns.map((v, i) =>
-            `#${i + 1} ${v.vulnerability || "Unknown"}\n` +
+            #${i + 1} ${v.vulnerability || "Unknown"}\n +
             `  Impact: ${v.impact || "N/A"} | Confidence: ${v.confidence || "N/A"}\n` +
             `  Details: ${v.description || "No details provided."}`
         ).join("\n\n");
@@ -147,7 +147,7 @@
 
             if (res.status === 402) {
                 const quote = await res.json();
-                statusBox.textContent = `Sponsoring ${quote.amount} USDC on ${selectedNetwork}...`;
+                statusBox.textContent = Sponsoring ${quote.amount} USDC on ${selectedNetwork}...;
 
                 const payRes = await fetch(PAY_URL, {
                     method: "POST",
@@ -183,7 +183,7 @@
             // ── BADGE ELIGIBILITY CHECK (new) ──
             checkBadgeEligibility(data);
 
-            statusBox.textContent = `✅ Audit Complete! Stored on IPFS and ${selectedNetwork}.`;
+            statusBox.textContent = ✅ Audit Complete! Stored on IPFS and ${selectedNetwork}.;
             downloadSection.style.display = "block";
 
             if (data.ipfs?.url) addLink(linksBox, data.ipfs.url, "View on IPFS");
@@ -288,7 +288,7 @@
 
             const mintData = await mintRes.json();
 
-            badgeStatus.textContent = `✅ Badge minted! Token ID: #${mintData.badge.tokenId}`;
+            badgeStatus.textContent = ✅ Badge minted! Token ID: #${mintData.badge.tokenId};
 
             addLink(linksBox, mintData.badge.explorerUrl, "🏅 View Badge Tx on Snowtrace");
 
@@ -380,7 +380,7 @@
         doc.text("SECURITY SCORE", margin + 10, y + 12);
         doc.setFontSize(32);
         doc.setTextColor(themeColor[0], themeColor[1], themeColor[2]);
-        doc.text(`${score}`, margin + 10, y + 25);
+        doc.text(${score}, margin + 10, y + 25);
         doc.setFontSize(12);
         doc.text("/ 100", margin + 32, y + 25);
         doc.setFillColor(themeColor[0], themeColor[1], themeColor[2]);
@@ -402,7 +402,7 @@
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(51, 65, 85);
-        const summaryText = `This automated audit uses advanced AI patterns to detect vulnerabilities including Reentrancy, Integer Overflows, and Access Control flaws. Deployed on ${network}.`;
+        const summaryText = This automated audit uses advanced AI patterns to detect vulnerabilities including Reentrancy, Integer Overflows, and Access Control flaws. Deployed on ${network}.;
         const splitSummary = doc.splitTextToSize(summaryText, pageWidth - (margin * 2));
         doc.text(splitSummary, margin, y);
 
@@ -447,14 +447,14 @@
         renderPDFSection("AI ANALYSIS", 0, 82, 255, report.aiAnalysis || "No AI analysis data found.");
 
         addFooter(doc, pageWidth, pageHeight, fileName);
-        doc.save(`${cleanFileName}_Security_Audit_${network}.pdf`);
+        doc.save(${cleanFileName}_Security_Audit_${network}.pdf);
     }
 
     function addFooter(doc, pageWidth, pageHeight, fileName) {
         doc.setFontSize(8);
         doc.setTextColor(148, 163, 184);
-        doc.text(`AI Auditor Registry ID: ${Math.random().toString(36).substr(2, 9).toUpperCase()}`, 20, pageHeight - 10);
-        doc.text(`${fileName} - Page ${doc.internal.getCurrentPageInfo().pageNumber}`, pageWidth - 60, pageHeight - 10);
+        doc.text(AI Auditor Registry ID: ${Math.random().toString(36).substr(2, 9).toUpperCase()}, 20, pageHeight - 10);
+        doc.text(${fileName} - Page ${doc.internal.getCurrentPageInfo().pageNumber}, pageWidth - 60, pageHeight - 10);
     }
 
     document.getElementById("auditBtn").addEventListener("click", runAudit);
