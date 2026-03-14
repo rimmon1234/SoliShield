@@ -34,7 +34,7 @@
         select { padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 14px; color: #1e293b; background: white; cursor: pointer; }
         select:focus { outline: none; border-color: #0052ff; }
 
-        /* ── BADGE SECTION (new) ── */
+        /* ── BADGE SECTION ── */
         #badgeSection { display: none; margin-top: 25px; padding: 20px; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; }
         #badgeSection h3 { color: #92400e; margin-top: 0; }
         #mintBadgeBtn { background: #f59e0b; margin-top: 10px; }
@@ -60,7 +60,7 @@
     </select>
     <br><br>
 
-    <button id="auditBtn">Pay & Run Audit</button>
+    <button id="auditBtn">Pay &amp; Run Audit</button>
 
     <p id="status" class="status"></p>
 
@@ -69,7 +69,7 @@
         <button id="downloadBtn" style="background: #10b981;">Download PDF Report</button>
     </div>
 
-    <!-- ── BADGE SECTION (new) ── -->
+    <!-- ── BADGE SECTION ── -->
     <div id="badgeSection">
         <h3>🏅 Eligible for Audit Badge!</h3>
         <p>Your contract scored <strong id="badgeScore"></strong>/100 with no high/critical vulnerabilities.</p>
@@ -77,7 +77,7 @@
         <label style="font-weight: 600;">Your Wallet Address (to receive the badge):</label>
         <input type="text" id="walletInput" placeholder="0x..." />
         <br>
-        <button id="mintBadgeBtn">Pay 1 USDC & Mint Badge</button>
+        <button id="mintBadgeBtn">Pay 1 USDC &amp; Mint Badge</button>
         <p id="badgeStatus"></p>
     </div>
 
@@ -97,40 +97,40 @@
 
 <script>
     const AUDIT_URL = "http://localhost:3000/audit";
-    const PAY_URL = "http://localhost:3000/pay";
-    const MINT_URL = "http://localhost:3000/mint-badge"; // ← new
+    const PAY_URL   = "http://localhost:3000/pay";
+    const MINT_URL  = "http://localhost:3000/mint-badge";
 
     let lastReportData = null;
-    let lastAuditMeta = null; // ← new
+    let lastAuditMeta  = null;
 
     function formatVulnerabilities(vulns) {
         if (!vulns || vulns.length === 0) return "✅ No vulnerabilities detected by Slither.";
         return vulns.map((v, i) =>
-            #${i + 1} ${v.vulnerability || "Unknown"}\n +
+            `#${i + 1} ${v.vulnerability || "Unknown"}\n` +
             `  Impact: ${v.impact || "N/A"} | Confidence: ${v.confidence || "N/A"}\n` +
             `  Details: ${v.description || "No details provided."}`
         ).join("\n\n");
     }
 
     async function runAudit() {
-        const fileInput = document.getElementById("contractFile");
-        const networkSelect = document.getElementById("network");
-        const statusBox = document.getElementById("status");
-        const linksBox = document.getElementById("links");
+        const fileInput       = document.getElementById("contractFile");
+        const networkSelect   = document.getElementById("network");
+        const statusBox       = document.getElementById("status");
+        const linksBox        = document.getElementById("links");
         const downloadSection = document.getElementById("downloadSection");
-        const btn = document.getElementById("auditBtn");
+        const btn             = document.getElementById("auditBtn");
         const selectedNetwork = networkSelect.value;
 
         if (!fileInput.files.length) return alert("Please select a .sol file");
 
         linksBox.innerHTML = "";
         downloadSection.style.display = "none";
-        document.getElementById("badgeSection").style.display = "none"; // ← new
-        document.getElementById("badgeStatus").textContent = ""; // ← new
+        document.getElementById("badgeSection").style.display  = "none";
+        document.getElementById("badgeStatus").textContent      = "";
         document.getElementById("slitherSection").style.display = "none";
-        document.getElementById("aiSection").style.display = "none";
-        document.getElementById("slitherResult").textContent = "";
-        document.getElementById("aiResult").textContent = "";
+        document.getElementById("aiSection").style.display      = "none";
+        document.getElementById("slitherResult").textContent    = "";
+        document.getElementById("aiResult").textContent         = "";
 
         try {
             btn.disabled = true;
@@ -140,19 +140,19 @@
             checkForm.append("contract", fileInput.files[0]);
 
             let res = await fetch(AUDIT_URL, {
-                method: "POST",
+                method:  "POST",
                 headers: { "x-network": selectedNetwork },
-                body: checkForm
+                body:    checkForm
             });
 
             if (res.status === 402) {
                 const quote = await res.json();
-                statusBox.textContent = Sponsoring ${quote.amount} USDC on ${selectedNetwork}...;
+                statusBox.textContent = `Sponsoring ${quote.amount} USDC on ${selectedNetwork}...`;
 
                 const payRes = await fetch(PAY_URL, {
-                    method: "POST",
+                    method:  "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ amount: quote.amount, network: selectedNetwork })
+                    body:    JSON.stringify({ amount: quote.amount, network: selectedNetwork })
                 });
 
                 if (!payRes.ok) {
@@ -161,7 +161,7 @@
                 }
 
                 const paymentResult = await payRes.json();
-                const paymentProof = btoa(JSON.stringify(paymentResult));
+                const paymentProof  = btoa(JSON.stringify(paymentResult));
 
                 statusBox.textContent = "Payment confirmed! Running AI audit...";
 
@@ -169,9 +169,9 @@
                 auditForm.append("contract", fileInput.files[0]);
 
                 res = await fetch(AUDIT_URL, {
-                    method: "POST",
+                    method:  "POST",
                     headers: { "x-payment": paymentProof, "x-network": selectedNetwork },
-                    body: auditForm
+                    body:    auditForm
                 });
             }
 
@@ -180,48 +180,49 @@
             const data = await res.json();
             lastReportData = data;
 
-            // ── BADGE ELIGIBILITY CHECK (new) ──
             checkBadgeEligibility(data);
 
-            statusBox.textContent = ✅ Audit Complete! Stored on IPFS and ${selectedNetwork}.;
+            statusBox.textContent = `✅ Audit Complete! Stored on IPFS and ${selectedNetwork}.`;
             downloadSection.style.display = "block";
 
             if (data.ipfs?.url) addLink(linksBox, data.ipfs.url, "View on IPFS");
             if (data.blockchain?.explorerUrl) {
-                const explorerLabel = selectedNetwork === "avalanche-fuji" ? "View on Snowtrace" : "View on Basescan";
+                const explorerLabel = selectedNetwork === "avalanche-fuji"
+                    ? "View on Snowtrace"
+                    : "View on Basescan";
                 addLink(linksBox, data.blockchain.explorerUrl, explorerLabel);
             }
 
             const slitherText = data.report?.slitherAnalysis || formatVulnerabilities(data.report?.vulnerabilities);
             if (slitherText) {
                 document.getElementById("slitherSection").style.display = "block";
-                document.getElementById("slitherResult").textContent = slitherText;
+                document.getElementById("slitherResult").textContent    = slitherText;
             }
 
             const aiText = data.report?.aiAnalysis;
             if (aiText) {
                 document.getElementById("aiSection").style.display = "block";
-                document.getElementById("aiResult").textContent = aiText;
+                document.getElementById("aiResult").textContent    = aiText;
             }
 
             if (!slitherText && !aiText) {
                 document.getElementById("aiSection").style.display = "block";
-                document.getElementById("aiResult").textContent = JSON.stringify(data, null, 2);
+                document.getElementById("aiResult").textContent    = JSON.stringify(data, null, 2);
             }
 
         } catch (err) {
             statusBox.textContent = "";
             document.getElementById("aiSection").style.display = "block";
-            document.getElementById("aiResult").textContent = "Error: " + err.message;
+            document.getElementById("aiResult").textContent    = "Error: " + err.message;
         } finally {
             btn.disabled = false;
         }
     }
 
-    // ── BADGE FUNCTIONS (new) ──
+    // ── BADGE FUNCTIONS ──
     function checkBadgeEligibility(data) {
         const report = data.report;
-        const score = report.securityScore;
+        const score  = report.securityScore;
 
         const hasHighOrCritical = report.vulnerabilities.some(v =>
             v.impact === "High" || v.impact === "Critical"
@@ -229,20 +230,20 @@
 
         if (score >= 80 && !hasHighOrCritical) {
             document.getElementById("badgeSection").style.display = "block";
-            document.getElementById("badgeScore").textContent = score;
+            document.getElementById("badgeScore").textContent     = score;
             lastAuditMeta = {
-                contractName: data.report.contract.split("/").pop(),
+                contractName:  data.report.contract.split("/").pop(),
                 securityScore: score,
-                ipfsCid: data.ipfs?.cid
+                ipfsCid:       data.ipfs?.cid
             };
         }
     }
 
     async function mintBadge() {
-        const btn = document.getElementById("mintBadgeBtn");
+        const btn         = document.getElementById("mintBadgeBtn");
         const badgeStatus = document.getElementById("badgeStatus");
         const walletInput = document.getElementById("walletInput").value.trim();
-        const linksBox = document.getElementById("links");
+        const linksBox    = document.getElementById("links");
 
         if (!walletInput || !walletInput.startsWith("0x")) {
             return alert("Please enter a valid wallet address starting with 0x");
@@ -253,9 +254,9 @@
             badgeStatus.textContent = "Processing payment on Avalanche Fuji...";
 
             const payRes = await fetch(PAY_URL, {
-                method: "POST",
+                method:  "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ network: "avalanche-fuji" })
+                body:    JSON.stringify({ network: "avalanche-fuji" })
             });
 
             if (!payRes.ok) throw new Error("Payment failed");
@@ -268,16 +269,16 @@
             const paymentProof = btoa(JSON.stringify(paymentResult));
 
             const mintRes = await fetch(MINT_URL, {
-                method: "POST",
+                method:  "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    "x-payment": paymentProof
+                    "x-payment":    paymentProof
                 },
                 body: JSON.stringify({
                     recipientAddress: walletInput,
-                    contractName: lastAuditMeta.contractName,
-                    securityScore: lastAuditMeta.securityScore,
-                    ipfsCid: lastAuditMeta.ipfsCid
+                    contractName:     lastAuditMeta.contractName,
+                    securityScore:    lastAuditMeta.securityScore,
+                    ipfsCid:          lastAuditMeta.ipfsCid
                 })
             });
 
@@ -288,7 +289,7 @@
 
             const mintData = await mintRes.json();
 
-            badgeStatus.textContent = ✅ Badge minted! Token ID: #${mintData.badge.tokenId};
+            badgeStatus.textContent = `✅ Badge minted! Token ID: #${mintData.badge.tokenId}`;
 
             addLink(linksBox, mintData.badge.explorerUrl, "🏅 View Badge Tx on Snowtrace");
 
@@ -301,26 +302,29 @@
 
     function addLink(box, url, text) {
         const a = document.createElement("a");
-        a.href = url; a.target = "_blank"; a.textContent = text;
+        a.href = url;
+        a.target = "_blank";
+        a.textContent = text;
         box.appendChild(a);
     }
 
     function generatePDF() {
         if (!lastReportData || !lastReportData.report) return alert("No report data found!");
 
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        const report = lastReportData.report;
-        const margin = 20;
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const pageHeight = doc.internal.pageSize.getHeight();
+        const { jsPDF }   = window.jspdf;
+        const doc         = new jsPDF();
+        const report      = lastReportData.report;
+        const margin      = 20;
+        const pageWidth   = doc.internal.pageSize.getWidth();
+        const pageHeight  = doc.internal.pageSize.getHeight();
         let y = 0;
 
-        const fileInput = document.getElementById("contractFile");
-        const fileName = fileInput.files[0]?.name || "contract.sol";
-        const cleanFileName = fileName.replace(".sol", "");
-        const network = lastReportData.network || document.getElementById("network").value;
+        const fileInput      = document.getElementById("contractFile");
+        const fileName       = fileInput.files[0]?.name || "contract.sol";
+        const cleanFileName  = fileName.replace(".sol", "");
+        const network        = lastReportData.network || document.getElementById("network").value;
 
+        // Header banner
         doc.setFillColor(15, 23, 42);
         doc.rect(0, 0, pageWidth, 45, 'F');
         doc.setFont("helvetica", "bold");
@@ -332,6 +336,7 @@
         doc.setTextColor(148, 163, 184);
         doc.text("AI-POWERED SMART CONTRACT ANALYSIS", margin, 32);
 
+        // Metadata
         y = 55;
         doc.setFontSize(9);
         doc.setTextColor(71, 85, 105);
@@ -366,11 +371,13 @@
         }
 
         y += 20;
+
+        // Score box
         const score = report.securityScore || 0;
         let themeColor = [22, 163, 74];
-        let riskLabel = "STABLE";
-        if (score < 80) { themeColor = [234, 179, 8]; riskLabel = "MEDIUM RISK"; }
-        if (score < 50) { themeColor = [220, 38, 38]; riskLabel = "CRITICAL RISK"; }
+        let riskLabel  = "STABLE";
+        if (score < 80) { themeColor = [234, 179, 8];  riskLabel = "MEDIUM RISK"; }
+        if (score < 50) { themeColor = [220, 38, 38];  riskLabel = "CRITICAL RISK"; }
 
         doc.setFillColor(248, 250, 252);
         doc.setDrawColor(226, 232, 240);
@@ -380,7 +387,7 @@
         doc.text("SECURITY SCORE", margin + 10, y + 12);
         doc.setFontSize(32);
         doc.setTextColor(themeColor[0], themeColor[1], themeColor[2]);
-        doc.text(${score}, margin + 10, y + 25);
+        doc.text(`${score}`, margin + 10, y + 25);
         doc.setFontSize(12);
         doc.text("/ 100", margin + 32, y + 25);
         doc.setFillColor(themeColor[0], themeColor[1], themeColor[2]);
@@ -390,6 +397,7 @@
         doc.setFont("helvetica", "bold");
         doc.text(riskLabel, pageWidth - margin - 46, y + 20, { align: 'left' });
 
+        // Executive summary
         y += 50;
         doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
@@ -402,7 +410,7 @@
         doc.setFontSize(10);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(51, 65, 85);
-        const summaryText = This automated audit uses advanced AI patterns to detect vulnerabilities including Reentrancy, Integer Overflows, and Access Control flaws. Deployed on ${network}.;
+        const summaryText = `This automated audit uses advanced AI patterns to detect vulnerabilities including Reentrancy, Integer Overflows, and Access Control flaws. Deployed on ${network}.`;
         const splitSummary = doc.splitTextToSize(summaryText, pageWidth - (margin * 2));
         doc.text(splitSummary, margin, y);
 
@@ -447,19 +455,19 @@
         renderPDFSection("AI ANALYSIS", 0, 82, 255, report.aiAnalysis || "No AI analysis data found.");
 
         addFooter(doc, pageWidth, pageHeight, fileName);
-        doc.save(${cleanFileName}_Security_Audit_${network}.pdf);
+        doc.save(`${cleanFileName}_Security_Audit_${network}.pdf`);
     }
 
     function addFooter(doc, pageWidth, pageHeight, fileName) {
         doc.setFontSize(8);
         doc.setTextColor(148, 163, 184);
-        doc.text(AI Auditor Registry ID: ${Math.random().toString(36).substr(2, 9).toUpperCase()}, 20, pageHeight - 10);
-        doc.text(${fileName} - Page ${doc.internal.getCurrentPageInfo().pageNumber}, pageWidth - 60, pageHeight - 10);
+        doc.text(`AI Auditor Registry ID: ${Math.random().toString(36).substr(2, 9).toUpperCase()}`, 20, pageHeight - 10);
+        doc.text(`${fileName} - Page ${doc.internal.getCurrentPageInfo().pageNumber}`, pageWidth - 60, pageHeight - 10);
     }
 
     document.getElementById("auditBtn").addEventListener("click", runAudit);
     document.getElementById("downloadBtn").addEventListener("click", generatePDF);
-    document.getElementById("mintBadgeBtn").addEventListener("click", mintBadge); // ← new
+    document.getElementById("mintBadgeBtn").addEventListener("click", mintBadge);
 </script>
 </body>
 </html>
