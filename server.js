@@ -6,6 +6,7 @@ import multer from "multer";
 import cors from "cors";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+import { mintAuditBadge } from "./blockchain/badgeMinter.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -227,6 +228,74 @@ app.post("/audit", async (req, res) => {
         console.error("Cleanup failed:", cleanupErr.message);
       }
     }
+  }
+});
+
+/*
+----------------------------------
+Badge Mint Endpoint
+----------------------------------
+*/
+app.post("/mint-badge", async (req, res) => {
+  try {
+    const { recipientAddress, contractName, securityScore, ipfsCid } = req.body;
+
+    // Validate wallet address
+    if (!recipientAddress || !recipientAddress.startsWith("0x")) {
+      return res.status(400).json({ error: "Invalid recipient address" });
+    }
+
+    // Validate eligibility
+    if (securityScore < 80) {
+      return res.status(400).json({ error: "Score too low for badge" });
+    }
+
+    // Verify x402 payment
+    const paymentHeader = req.headers["x-payment"];
+    if (!paymentHeader) {
+      const paymentRequest = getPaymentRequest("avalanche-fuji");
+      return res
+        .status(402)
+        .header("Payment-Required", build402Response(paymentRequest))
+        .json({ error: "Payment required", code: 402 });
+    }
+
+    let paymentData;
+    try {
+      paymentData = JSON.parse(
+        Buffer.from(paymentHeader, "base64").toString("utf8")
+      );
+    } catch (e) {
+      return res.status(402).json({ error: "Malformed payment header" });
+    }
+
+    const paid = await verifyPayment(paymentData);
+    if (!paid) {
+      return res.status(402).json({ error: "Invalid payment" });
+    }
+
+    // Mint the badge
+    const badgeResult = await mintAuditBadge(
+      recipientAddress,
+      contractName,
+      securityScore,
+      ipfsCid
+    );
+
+    res.json({
+      success: true,
+      badge: {
+        tokenId: badgeResult.tokenId,
+        recipient: recipientAddress,
+        txHash: badgeResult.txHash,
+        explorerUrl: badgeResult.explorerUrl,
+        tokenUrl: badgeResult.tokenUrl
+      }
+    });
+
+  } catch (err) {
+    console.error("BADGE ERROR:", err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 
