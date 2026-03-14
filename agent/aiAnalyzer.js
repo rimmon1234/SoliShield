@@ -53,4 +53,5 @@ Rules:
     model: "gemini-2.5-flash",
     contents: prompt
   });
+  return response.text;
 }
