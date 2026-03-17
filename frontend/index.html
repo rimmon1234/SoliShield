@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Smart Contract Auditor</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; line-height: 1.6; background: #f8fafc; color: #1e293b; }
@@ -62,11 +64,9 @@
 
     <button id="auditBtn">Pay &amp; Run Audit</button>
 
-    <p id="status" class="status"></p>
-
-    <div id="downloadSection">
-        <h3>✅ Audit Ready</h3>
-        <button id="downloadBtn" style="background: #10b981;">Download PDF Report</button>
+    <div class="hero">
+        <h2 class="top-header">AI Smart Contract Security Audit</h2>
+        <p>Pay-per-audit smart contract security analysis powered by AI and x402 micropayments via facinet.</p>
     </div>
 
     <!-- ── BADGE SECTION ── -->
@@ -81,15 +81,10 @@
         <p id="badgeStatus"></p>
     </div>
 
-    <div id="links" class="links"></div>
-
-    <div class="result-section" id="slitherSection" style="display:none;">
-        <div class="result-label label-slither">🔍 Slither Static Analysis</div>
-        <pre id="slitherResult"></pre>
-    </div>
-    <div class="result-section" id="aiSection" style="display:none;">
-        <div class="result-label label-ai">🤖 AI Analysis</div>
-        <pre id="aiResult"></pre>
+    <div class="button-section">
+        <div class="button-group">
+            <button id="audit-button">Pay & Run Audit &nbsp; <i class="fa-solid fa-coins"></i></button>
+        </div>
     </div>
 </div>
 
@@ -414,56 +409,31 @@
         const splitSummary = doc.splitTextToSize(summaryText, pageWidth - (margin * 2));
         doc.text(splitSummary, margin, y);
 
-        y += splitSummary.length * 6 + 10;
+    <div id="downloadSection" class="download-section">
+        <button id="downloadBtn" class="download-btn">Download PDF Report &nbsp; <i class="fa-solid fa-file-pdf"></i></button>
+    </div>
 
-        function renderPDFSection(sectionTitle, accentR, accentG, accentB, text) {
-            if (!text) return;
-            if (y > pageHeight - 40) {
-                addFooter(doc, pageWidth, pageHeight, fileName);
-                doc.addPage();
-                y = 25;
-            }
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(14);
-            doc.setTextColor(15, 23, 42);
-            doc.text(sectionTitle, margin, y);
-            doc.setDrawColor(accentR, accentG, accentB);
-            doc.setLineWidth(1);
-            doc.line(margin, y + 2, margin + 20, y + 2);
-            y += 12;
-            doc.setFont("helvetica", "normal");
-            doc.setFontSize(10);
-            doc.setTextColor(30, 30, 30);
-            const lines = doc.splitTextToSize(text, pageWidth - (margin * 2));
-            lines.forEach(line => {
-                if (y > pageHeight - 25) {
-                    addFooter(doc, pageWidth, pageHeight, fileName);
-                    doc.addPage();
-                    y = 25;
-                    doc.setFont("helvetica", "normal");
-                    doc.setFontSize(10);
-                    doc.setTextColor(30, 30, 30);
-                }
-                doc.text(line, margin, y);
-                y += 6;
-            });
-            y += 10;
-        }
+    <div id="badgeSection" class="badge-section">
+        <p>Your contract scored <strong id="badgeScore"></strong>/100 — Eligible for Audit Badge!</p>
+        <p class="badge-sub">Mint a Soulbound Token on Avalanche Fuji as permanent proof of quality.</p>
+        <input type="text" id="walletInput" class="wallet-input" placeholder="Enter your wallet address (0x...)" />
+        <br>
+        <button id="mintBadgeBtn" class="mint-btn">Pay 1 USDC & Mint Badge &nbsp; <i class="fa-solid fa-shield"></i></button>
+        <p id="badgeStatus" class="status"></p>
+    </div>
 
-        const slitherText = report.slitherAnalysis || formatVulnerabilities(report.vulnerabilities);
-        renderPDFSection("SLITHER STATIC ANALYSIS", 124, 58, 237, slitherText);
-        renderPDFSection("AI ANALYSIS", 0, 82, 255, report.aiAnalysis || "No AI analysis data found.");
+    <div id="slitherSection" class="result-section">
+        <p class="result-label">Slither Static Analysis</p>
+        <pre id="slitherResult" class="result-box"></pre>
+    </div>
 
-        addFooter(doc, pageWidth, pageHeight, fileName);
-        doc.save(`${cleanFileName}_Security_Audit_${network}.pdf`);
-    }
+    <div id="aiSection" class="result-section">
+        <p class="result-label">AI Analysis</p>
+        <pre id="aiResult" class="result-box"></pre>
+    </div>
 
-    function addFooter(doc, pageWidth, pageHeight, fileName) {
-        doc.setFontSize(8);
-        doc.setTextColor(148, 163, 184);
-        doc.text(`AI Auditor Registry ID: ${Math.random().toString(36).substr(2, 9).toUpperCase()}`, 20, pageHeight - 10);
-        doc.text(`${fileName} - Page ${doc.internal.getCurrentPageInfo().pageNumber}`, pageWidth - 60, pageHeight - 10);
-    }
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="script.js"></script>
 
     document.getElementById("auditBtn").addEventListener("click", runAudit);
     document.getElementById("downloadBtn").addEventListener("click", generatePDF);
